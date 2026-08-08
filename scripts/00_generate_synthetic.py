@@ -159,7 +159,12 @@ def main():
     client = genai.Client()  # lee GEMINI_API_KEY (o GOOGLE_API_KEY) del entorno
 
     kept, rejected = [], 0
+    # Freno de costo: si el juez rechaza tanto que juzgamos mas de 4x el objetivo,
+    # algo anda mal con el generador y no tiene sentido seguir gastando llamadas.
     while len(kept) < args.n:
+        if len(kept) + rejected >= args.n * 4:
+            print("tope de seguridad alcanzado (4x el objetivo), escribiendo lo que hay")
+            break
         for example in generate_batch(client, seeds, args.batch):
             verdict = judge(client, example)
             if verdict["label_is_correct"]:
