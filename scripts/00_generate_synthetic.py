@@ -6,8 +6,8 @@ los dos prompts (generador y juez) y la tasa de rechazo del juez: eso demuestra 
 entiendes el ciclo generar -> filtrar, no solo que corriste un tutorial.
 
 Uso:
-    pip install anthropic
-    export ANTHROPIC_API_KEY=...
+    pip install google-genai
+    export GEMINI_API_KEY=...   # gratis en https://aistudio.google.com/apikey
     python 00_generate_synthetic.py --n 300 --out ../data/synthetic.jsonl
 """
 
@@ -15,10 +15,12 @@ import argparse
 import json
 import pathlib
 import random
+import time
 
-import anthropic
+from google import genai
+from google.genai import errors, types
 
-MODEL = "claude-opus-5"
+MODEL = "gemini-2.5-flash"
 
 OWASP_CATEGORIES = [
     "A01:2021-Broken Access Control",
@@ -56,12 +58,10 @@ EXAMPLE_SCHEMA = {
                     "is_false_positive",
                     "rationale",
                 ],
-                "additionalProperties": False,
             },
         }
     },
     "required": ["examples"],
-    "additionalProperties": False,
 }
 
 VERDICT_SCHEMA = {
@@ -71,7 +71,6 @@ VERDICT_SCHEMA = {
         "reason": {"type": "string"},
     },
     "required": ["label_is_correct", "reason"],
-    "additionalProperties": False,
 }
 
 GENERATOR_PROMPT = """You are helping build a training dataset for a security finding
@@ -112,37 +111,39 @@ Rationale: {rationale}
 """
 
 
-def parse_json_response(response):
-    text = next(b.text for b in response.content if b.type == "text")
-    return json.loads(text)
+def call_json(client, prompt, schema):
+    """Llama a Gemini con salida JSON forzada al esquema. Reintenta ante limite de tasa,
+    que en la capa gratuita se alcanza rapido (~10 peticiones/minuto)."""
+    for attempt in range(6):
+        try:
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema,
+                ),
+            )
+            return json.loads(response.text)
+        except errors.APIError as e:
+            if e.code == 429 and attempt < 5:
+                wait = 15 * (attempt + 1)
+                print(f"  limite de tasa, esperando {wait}s...")
+                time.sleep(wait)
+            else:
+                raise
 
 
 def generate_batch(client, seeds, n):
     seed_text = "\n".join(
         json.dumps(s, ensure_ascii=False) for s in random.sample(seeds, min(6, len(seeds)))
     )
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=16000,
-        output_config={"format": {"type": "json_schema", "schema": EXAMPLE_SCHEMA}},
-        messages=[
-            {
-                "role": "user",
-                "content": GENERATOR_PROMPT.format(n=n, seeds=seed_text),
-            }
-        ],
-    )
-    return parse_json_response(response)["examples"]
+    prompt = GENERATOR_PROMPT.format(n=n, seeds=seed_text)
+    return call_json(client, prompt, EXAMPLE_SCHEMA)["examples"]
 
 
 def judge(client, example):
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=2000,
-        output_config={"format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
-        messages=[{"role": "user", "content": JUDGE_PROMPT.format(**example)}],
-    )
-    return parse_json_response(response)
+    return call_json(client, JUDGE_PROMPT.format(**example), VERDICT_SCHEMA)
 
 
 def main():
@@ -155,7 +156,7 @@ def main():
 
     here = pathlib.Path(__file__).parent
     seeds = [json.loads(line) for line in (here / args.seeds).open()]
-    client = anthropic.Anthropic()
+    client = genai.Client()  # lee GEMINI_API_KEY (o GOOGLE_API_KEY) del entorno
 
     kept, rejected = [], 0
     while len(kept) < args.n:

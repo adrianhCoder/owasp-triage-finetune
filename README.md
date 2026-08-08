@@ -105,14 +105,14 @@ filtro está haciendo algo y no es decorativo.
 
 ```bash
 pip install "transformers>=4.44" "trl>=0.12" "peft>=0.13" datasets accelerate bitsandbytes
-pip install anthropic          # solo para la generación sintética
+pip install google-genai       # solo para la generación sintética (Gemini, capa gratuita)
 ```
 
 ### Los cuatro pasos, en orden
 
 ```bash
 # 1. Ampliar el dataset: 26 semillas -> ~300 ejemplos filtrados por el juez
-export ANTHROPIC_API_KEY=...
+export GEMINI_API_KEY=...      # gratis en https://aistudio.google.com/apikey
 python scripts/00_generate_synthetic.py --n 300
 
 # 2. LÍNEA BASE. Antes de entrenar. Este paso no se salta.
