@@ -1,0 +1,21 @@
+# Notas de contexto personal — nunca se publican
+NOTAS_INTERNAS.md
+
+# Artefactos de entrenamiento
+qwen-owasp-triage-lora/
+*.safetensors
+checkpoint-*/
+runs/
+wandb/
+
+# Datos generados (el dataset semilla SÍ se versiona)
+data/synthetic.jsonl
+data/test.jsonl
+
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
+
+# Config local de Claude Code
+.claude/settings.local.json
