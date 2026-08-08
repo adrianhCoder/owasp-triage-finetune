@@ -9,6 +9,7 @@ Pensado para correr en Colab gratis (GPU T4). Pegar en una celda o subir el repo
 no puedes decir "paso de X a Y", y esa frase es la mitad del valor del proyecto.
 """
 
+import argparse
 import json
 import pathlib
 
@@ -57,17 +58,32 @@ def to_chat(example):
 
 
 def main():
-    rows = load_examples()
-    dataset = Dataset.from_list([to_chat(r) for r in rows])
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--split-only",
+        action="store_true",
+        help="solo guarda data/test.jsonl y sale, para poder medir la linea base antes de entrenar",
+    )
+    args = parser.parse_args()
 
-    # Split estratificado barato: shuffle con semilla fija y corte 80/10/10.
+    rows = load_examples()
+    dataset = Dataset.from_list(rows)
+
+    # Split barato: shuffle con semilla fija y corte 80/10/10. Es determinista, asi que
+    # --split-only (antes de la linea base) y el entrenamiento producen el mismo test set.
     splits = dataset.train_test_split(test_size=0.2, seed=42)
     holdout = splits["test"].train_test_split(test_size=0.5, seed=42)
-    train_ds, val_ds, test_ds = splits["train"], holdout["train"], holdout["test"]
+    train_raw, val_raw, test_raw = splits["train"], holdout["train"], holdout["test"]
 
     here = pathlib.Path(__file__).parent
-    test_ds.to_json(here / ".." / "data" / "test.jsonl")
-    print(f"train {len(train_ds)} · val {len(val_ds)} · test {len(test_ds)} (test guardado)")
+    # El test set se guarda con los campos crudos, que es el formato que espera 02_eval.py.
+    test_raw.to_json(here / ".." / "data" / "test.jsonl")
+    print(f"train {len(train_raw)} · val {len(val_raw)} · test {len(test_raw)} (test guardado)")
+    if args.split_only:
+        return
+
+    train_ds = train_raw.map(to_chat, remove_columns=train_raw.column_names)
+    val_ds = val_raw.map(to_chat, remove_columns=val_raw.column_names)
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(

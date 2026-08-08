@@ -116,6 +116,7 @@ export GEMINI_API_KEY=...      # gratis en https://aistudio.google.com/apikey
 python scripts/00_generate_synthetic.py --n 300
 
 # 2. LÍNEA BASE. Antes de entrenar. Este paso no se salta.
+python scripts/01_train_sft_lora.py --split-only   # fija data/test.jsonl (semilla 42)
 python scripts/02_eval.py --base
 
 # 3. Entrenar con LoRA (Colab T4, aproximadamente 1 a 2 horas)
@@ -132,8 +133,9 @@ Sin esa medición no existe la frase *"la exactitud pasó de X a Y"*, y esa fras
 del valor del ejercicio. Un modelo entrenado sin línea base no demuestra nada: no se sabe si
 mejoró, si empeoró, o si el modelo base ya lo hacía bien con un buen prompt.
 
-El script de entrenamiento guarda el conjunto de prueba en `data/test.jsonl` con una semilla
-fija, de modo que las dos evaluaciones corren exactamente sobre los mismos ejemplos.
+El modo `--split-only` guarda el conjunto de prueba en `data/test.jsonl` con una semilla
+fija antes de entrenar; el entrenamiento reproduce exactamente el mismo split, de modo que
+las dos evaluaciones corren sobre los mismos ejemplos.
 
 ---
 
