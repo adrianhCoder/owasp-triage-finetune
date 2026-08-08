@@ -8,8 +8,8 @@ checkpoint-*/
 runs/
 wandb/
 
-# Datos generados (el dataset semilla SÍ se versiona)
-data/synthetic.jsonl
+# Datos generados. synthetic.jsonl SÍ se versiona (Colab lo necesita al clonar);
+# test.jsonl se regenera con semilla fija, no hace falta versionarlo.
 data/test.jsonl
 
 __pycache__/

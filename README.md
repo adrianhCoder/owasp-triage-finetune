@@ -97,6 +97,11 @@ Lo importante de esta etapa no es el archivo resultante sino **los dos prompts y
 rechazo del juez**, que el script imprime al terminar. Esa tasa es la evidencia de que el
 filtro está haciendo algo y no es decorativo.
 
+Corrida real (2026-08-08, generador y juez sobre `gemini-2.5-flash`): **340 ejemplos
+juzgados, 40 rechazados — tasa de rechazo del 11.6%**. El dataset final quedó con 300
+ejemplos, 29% de falsos positivos, y las 10 categorías representadas (entre 20 y 38
+ejemplos cada una, sin amontonamiento en inyección).
+
 ---
 
 ## 4. Cómo correrlo
