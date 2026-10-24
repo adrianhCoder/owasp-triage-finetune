@@ -188,7 +188,7 @@ capa de orquestación en vez de en la de servido.
 
 ## 5. Arquitectura de transformers, lo mínimo
 
-La JD de varios roles pide *"strong grasp of transformer architectures"*. Lo básico defendible:
+Muchas vacantes de AI Engineer piden *"strong grasp of transformer architectures"*. Lo básico defendible:
 
 **Self-attention** — cada token mira a todos los demás y pondera cuánto le importa cada uno.
 Es lo que reemplazó a las redes recurrentes: se puede paralelizar sobre la secuencia completa.
@@ -196,7 +196,7 @@ Es lo que reemplazó a las redes recurrentes: se puede paralelizar sobre la secu
 **Multi-head attention** — se hacen varias atenciones en paralelo, cada "cabeza" aprende a
 fijarse en relaciones distintas.
 
-**Los tres tipos de arquitectura**, que la JD del cliente "HY" nombra explícitamente:
+**Los tres tipos de arquitectura**:
 
 - **Encoder** (BERT): lee toda la secuencia de golpe y en ambas direcciones. Bueno para
   clasificación y para **embeddings**.

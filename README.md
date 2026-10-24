@@ -14,10 +14,14 @@ positivo**, y la justificación.
 }
 ```
 
-Entrenado con **LoRA** sobre `Qwen2.5-1.5B-Instruct` usando Hugging Face TRL y PEFT, en una
+Se entrena con **LoRA** sobre `Qwen2.5-1.5B-Instruct` usando Hugging Face TRL y PEFT, en una
 sola GPU T4 de Colab gratis. El dataset se construyó a mano y se amplió con **generación
 sintética filtrada por un juez LLM**. Se mide línea base contra modelo entrenado sobre un
 conjunto de prueba intocado.
+
+> **Estado (octubre 2026):** el dataset (26 semillas + 300 ejemplos sintéticos filtrados por
+> el juez) y el pipeline de entrenamiento y evaluación están listos. Pendiente: la corrida de
+> línea base, el entrenamiento y la evaluación; la tabla de la sección 5 se llena con esa salida.
 
 ---
 
@@ -109,9 +113,14 @@ ejemplos cada una, sin amontonamiento en inyección).
 ### Instalación
 
 ```bash
-pip install "transformers>=4.44" "trl>=0.12" "peft>=0.13" datasets accelerate bitsandbytes
+pip install "transformers==5.18.0" "trl==1.14.1" "peft==0.21.2" "datasets==5.0.1" "accelerate==1.15.0"
 pip install google-genai       # solo para la generación sintética (Gemini, capa gratuita)
 ```
+
+Las versiones están fijadas y probadas el 2026-10-01. Entre agosto y octubre de 2026
+transformers pasó a la 5 y TRL a la 1, y algunos parámetros cambiaron de nombre (`warmup_ratio`
+dejó de existir, `torch_dtype` pasó a `dtype`). Sin fijarlas, el notebook se rompe con la
+siguiente actualización.
 
 ### Los cuatro pasos, en orden
 
@@ -152,7 +161,12 @@ las dos evaluaciones corren sobre los mismos ejemplos.
 más grande y más visible del fine-tuning: un modelo base pequeño divaga, agrega texto antes y
 después, o se olvida de cerrar la llave. Después de entrenar, obedece el formato.
 
-**`category_acc`** — exactitud sobre la categoría OWASP. La métrica obvia.
+**`category_acc`** — exactitud sobre la categoría OWASP con la etiqueta exacta. La métrica obvia.
+
+**`category_code_acc`** — exactitud comparando solo el código (`A01` a `A10`). Un modelo base
+que responde `"A03:2021 - Injection"` en vez de `"A03:2021-Injection"` sabe la categoría pero
+falla el formato. Reportar las dos separa cuánto de la mejora es conocimiento y cuánto es
+formato.
 
 **`macro_f1`** — F1 macro sobre las categorías. Importa porque las clases están
 desbalanceadas: sin esto, un modelo que siempre dice "Injection" se vería mejor de lo que es.
@@ -162,12 +176,18 @@ positivo, reportadas por separado. Es la métrica que de verdad importa para el 
 Los dos errores tienen costos muy distintos: marcar como falso positivo algo que sí era
 explotable es mucho peor que lo contrario.
 
+**Las salidas que no se pueden parsear cuentan como error en todas las métricas**: categoría
+fallada y "no es falso positivo". Si se saltaran, inflarían `macro_f1` y `fp_recall` justo en
+el modelo que peor sigue el formato, que es la línea base, y la comparación saldría a favor de
+ella. `02_eval.py` guarda las métricas y el detalle por ejemplo en `results/`.
+
 ### Resultados
 
 | Métrica | Base | Fine-tuneado | Δ |
 |---|---|---|---|
 | `json_valid` | | | |
 | `category_acc` | | | |
+| `category_code_acc` | | | |
 | `macro_f1` | | | |
 | `fp_precision` | | | |
 | `fp_recall` | | | |
@@ -206,7 +226,10 @@ owasp-triage-finetune/
 ├── data/
 │   ├── seed_examples.jsonl     ← 26 ejemplos escritos a mano
 │   ├── synthetic.jsonl         ← generado por el paso 1
-│   └── test.jsonl              ← guardado por el paso 3, intocado
+│   └── test.jsonl              ← guardado por el paso 2, intocado
+├── results/
+│   ├── base.json               ← métricas y detalle por ejemplo de la línea base
+│   └── tuned.json              ← lo mismo para el modelo entrenado
 └── scripts/
     ├── 00_generate_synthetic.py  ← generador + juez LLM
     ├── 01_train_sft_lora.py      ← SFT con LoRA (TRL + PEFT)
@@ -225,6 +248,10 @@ Esto importa tanto como los resultados. Lo que este proyecto **no** es:
   1.5B con LoRA cabe en una sola GPU y no hay forma honesta de ejercitar sharding aquí.
 - **El dataset es chico y en parte sintético.** Sirve para demostrar el ciclo completo de
   extremo a extremo, no para desplegar un sistema de triage real.
+- **El conjunto de prueba sale de la misma distribución que el de entrenamiento.** La mayoría
+  de los ejemplos de prueba los generó el mismo LLM, a partir de las mismas semillas, así que
+  las métricas miden qué tan bien el modelo aprendió esa distribución. Un set de prueba escrito
+  a mano desde cero daría una lectura más dura.
 - **No se hizo preference tuning en esta fase.** DPO sobre las justificaciones y servido con
   vLLM más cuantización son extensiones naturales, pero todavía no están hechas.
 

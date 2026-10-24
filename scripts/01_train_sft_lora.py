@@ -2,7 +2,7 @@
 
 Pensado para correr en Colab gratis (GPU T4). Pegar en una celda o subir el repo.
 
-    !pip install -q "transformers>=4.44" "trl>=0.12" "peft>=0.13" datasets accelerate bitsandbytes
+    !pip install -q "transformers==5.18.0" "trl==1.14.1" "peft==0.21.2" "datasets==5.0.1" "accelerate==1.15.0"
     !python 01_train_sft_lora.py
 
 ⚠️ ORDEN CORRECTO: correr 02_eval.py con --base ANTES de entrenar. Sin la linea base
@@ -88,7 +88,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        torch_dtype=torch.float16,  # la T4 no soporta bf16
+        dtype=torch.float16,  # la T4 no soporta bf16 (transformers 5: dtype, ya no torch_dtype)
         device_map="auto",
     )
 
@@ -108,7 +108,7 @@ def main():
         gradient_accumulation_steps=8,
         learning_rate=2e-4,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.05,
+        warmup_steps=0.05,  # TRL 1.x ya no tiene warmup_ratio; un valor < 1 es proporcion
         logging_steps=5,
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -126,6 +126,13 @@ def main():
         processing_class=tokenizer,
         peft_config=peft_config,
     )
+    # Comprobacion barata antes de entrenar: el texto que lleva perdida (labels != -100)
+    # debe ser solo el JSON de la respuesta, nunca el hallazgo ni el prompt de sistema.
+    ejemplo = trainer.train_dataset[0]
+    if "labels" in ejemplo:
+        con_perdida = [t for t, l in zip(ejemplo["input_ids"], ejemplo["labels"]) if l != -100]
+        print("perdida solo sobre:", repr(tokenizer.decode(con_perdida)[:160]))
+
     trainer.train()
     trainer.save_model(OUTPUT_DIR)
     print(f"\nadaptadores LoRA guardados en {OUTPUT_DIR}")

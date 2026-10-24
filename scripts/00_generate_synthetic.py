@@ -1,9 +1,8 @@
 """Genera ejemplos sinteticos a partir de las semillas y los filtra con un juez LLM.
 
-Este script es la evidencia de "data curation + synthetic data generation" que pide
-la JD de Assail. Lo importante para una entrevista NO es el dataset resultante, sino
-los dos prompts (generador y juez) y la tasa de rechazo del juez: eso demuestra que
-entiendes el ciclo generar -> filtrar, no solo que corriste un tutorial.
+Lo importante de este paso no es el dataset resultante, sino los dos prompts (generador
+y juez) y la tasa de rechazo del juez: esa tasa es la evidencia de que el filtro está
+haciendo algo y no es decorativo.
 
 Uso:
     pip install google-genai
